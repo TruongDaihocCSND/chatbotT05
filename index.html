@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chatbot - Đại học Cảnh sát nhân dân</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .chat-container { height: calc(100vh - 180px); }
+        .message-appear { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .dot-flashing {
+            position: relative; width: 10px; height: 10px; border-radius: 5px;
+            background-color: #3b82f6; color: #3b82f6;
+            animation: dotFlashing 1s infinite linear alternate; animation-delay: .5s;
+        }
+        .dot-flashing::before, .dot-flashing::after {
+            content: ''; display: inline-block; position: absolute; top: 0;
+        }
+        .dot-flashing::before {
+            left: -15px; width: 10px; height: 10px; border-radius: 5px;
+            background-color: #3b82f6; animation: dotFlashing 1s infinite alternate; animation-delay: 0s;
+        }
+        .dot-flashing::after {
+            left: 15px; width: 10px; height: 10px; border-radius: 5px;
+            background-color: #3b82f6; animation: dotFlashing 1s infinite alternate; animation-delay: 1s;
+        }
+        @keyframes dotFlashing { 0% { background-color: #3b82f6; } 50%, 100% { background-color: #ebe6ff; } }
+        
+        .source-link {
+            display: inline-flex;
+            align-items: center;
+            background: #f1f5f9;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-right: 5px;
+            margin-top: 5px;
+            font-size: 11px;
+            color: #1e293b;
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+        .source-link:hover { background: #e2e8f0; border-color: #cbd5e1; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans">
+
+    <header class="bg-red-700 text-white p-4 shadow-lg sticky top-0 z-10">
+        <div class="max-w-4xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white p-1 rounded-full w-10 h-10 flex items-center justify-center">
+                    <img src="https://dhcsnd.edu.vn/upload/hinhanh/lo-go-dhcs6666_26x32.png" alt="Logo PPU" class="w-8">
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight">Đại học Cảnh sát nhân dân</h1>
+                    <p class="text-xs opacity-80 italic">Thông tin chính xác - Khách quan - Cập nhật</p>
+                </div>
+            </div>
+            <button id="clearChat" class="hover:bg-red-800 p-2 rounded-full transition w-10 h-10" title="Xóa hội thoại">
+                <i class="fas fa-trash-alt"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto p-4 chat-container overflow-y-auto" id="chatArea">
+        <div class="flex mb-4 message-appear">
+            <div class="bg-white border border-red-100 p-4 rounded-2xl rounded-tl-none shadow-sm max-w-[85%]">
+                <p class="text-sm">Hệ thống trợ lý AI đã sẵn sàng. Hãy đặt câu hỏi về các văn bản, quy định hoặc thông tin tuyển sinh của <b>Đại học Cảnh sát nhân dân</b>.</p>
+            </div>
+        </div>
+    </main>
+
+    <div id="typingIndicator" class="hidden max-w-4xl mx-auto px-4 mb-4">
+        <div class="flex items-center space-x-2 bg-white border p-4 rounded-2xl w-24 shadow-sm">
+            <div class="dot-flashing mx-auto"></div>
+        </div>
+    </div>
+
+    <footer class="fixed bottom-0 left-0 right-0 bg-white border-t p-4 pb-6 md:pb-4">
+        <div class="max-w-4xl mx-auto">
+            <form id="chatForm" class="flex items-center space-x-2">
+                <input type="text" id="userInput" placeholder="Hỏi về quy chế, thông báo, nhân sự..." 
+                    class="flex-1 border border-slate-300 rounded-full px-5 py-3 focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent transition text-sm">
+                <button type="submit" class="bg-red-700 text-white w-12 h-12 rounded-full flex items-center justify-center hover:bg-red-800 transition shadow-md active:scale-95">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </form>
+            <p class="text-[10px] text-center text-slate-400 mt-2">Dữ liệu được đối soát từ văn bản nội bộ và Google Search.</p>
+        </div>
+    </footer>
+
+    <script>
+        const chatArea = document.getElementById('chatArea');
+        const chatForm = document.getElementById('chatForm');
+        const userInput = document.getElementById('userInput');
+        const typingIndicator = document.getElementById('typingIndicator');
+        const apiKey = ""; 
+
+        const ADMIN_DIGITIZED_DATA = `
+            [Dữ liệu nội bộ từ văn bản trường nạp tại đây]
+        `;
+
+        const systemPrompt = `
+            Bạn là trợ lý AI chuyên cung cấp thông tin thực tế về Trường Đại học Cảnh sát nhân dân (PPU).
+
+            PHONG CÁCH TRẢ LỜI QUAN TRỌNG:
+            1. TRỰC DIỆN & KHÁCH QUAN: Chỉ cung cấp thông tin thực tế, số liệu, tên gọi và chức năng nhiệm vụ.
+            2. KHÔNG CẢM TÍNH: Tuyệt đối không sử dụng các từ ngữ mang tính ca ngợi, nhận xét chủ quan (Ví dụ: KHÔNG nói "người chỉ huy trách nhiệm", "xây dựng hình ảnh đẹp", "đồng hành cùng phong trào"). 
+            3. TRUNG LẬP: Nếu trả lời về một cá nhân, chỉ nêu chức vụ, cấp bậc và nhiệm vụ chuyên môn theo văn bản.
+            4. THỜI GIAN THỰC: Sử dụng Google Search để lấy thông tin mới nhất.
+
+            NHIỆM VỤ:
+            - Ưu tiên thông tin từ dhcsnd.edu.vn và các văn bản quy định.
+            - Trình bày dạng danh sách hoặc đoạn văn ngắn gọn, súc tích.
+        `;
+
+        async function callGemini(message) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: message }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                tools: [{ "google_search": {} }]
+            };
+
+            let retries = 0;
+            while (retries < 5) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await response.json();
+                    const candidate = data.candidates?.[0];
+                    const text = candidate?.content?.parts?.[0]?.text || "Không tìm thấy dữ liệu.";
+                    const sources = candidate?.groundingMetadata?.groundingAttributions?.map(a => ({
+                        uri: a.web?.uri,
+                        title: a.web?.title
+                    })) || [];
+                    return { text, sources };
+                } catch (e) {
+                    retries++;
+                    await new Promise(r => setTimeout(r, Math.pow(2, retries) * 1000));
+                }
+            }
+            return { text: "Lỗi kết nối.", sources: [] };
+        }
+
+        function appendMessage(contentObj, isUser = false) {
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex mb-4 message-appear ${isUser ? 'justify-end' : ''}`;
+            const container = document.createElement('div');
+            container.className = isUser 
+                ? 'bg-red-700 text-white p-4 rounded-2xl rounded-tr-none shadow-sm max-w-[85%] text-sm'
+                : 'bg-white border border-red-100 p-4 rounded-2xl rounded-tl-none shadow-sm max-w-[85%] text-sm';
+            
+            const messageText = isUser ? contentObj : contentObj.text;
+            container.innerHTML = `<div>${messageText.replace(/\n/g, '<br>')}</div>`;
+
+            if (!isUser && contentObj.sources && contentObj.sources.length > 0) {
+                const sourceContainer = document.createElement('div');
+                sourceContainer.className = 'mt-3 pt-2 border-t border-slate-100';
+                sourceContainer.innerHTML = '<p class="text-[10px] font-bold text-slate-500 mb-1">NGUỒN TRÍCH DẪN:</p>';
+                const uniqueSources = Array.from(new Set(contentObj.sources.map(s => s.uri)))
+                    .map(uri => contentObj.sources.find(s => s.uri === uri));
+                uniqueSources.forEach(source => {
+                    const link = document.createElement('a');
+                    link.href = source.uri;
+                    link.target = '_blank';
+                    link.className = 'source-link';
+                    link.innerHTML = `<i class="fas fa-link mr-1"></i> ${source.title || 'Liên kết'}`;
+                    sourceContainer.appendChild(link);
+                });
+                container.appendChild(sourceContainer);
+            }
+            
+            wrapper.appendChild(container);
+            chatArea.appendChild(wrapper);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const message = userInput.value.trim();
+            if (!message) return;
+            appendMessage(message, true);
+            userInput.value = '';
+            typingIndicator.classList.remove('hidden');
+            chatArea.scrollTop = chatArea.scrollHeight;
+            const result = await callGemini(message);
+            typingIndicator.classList.add('hidden');
+            appendMessage(result, false);
+        });
+
+        document.getElementById('clearChat').addEventListener('click', () => {
+            if(confirm('Xóa hội thoại?')) {
+                chatArea.innerHTML = '';
+                appendMessage({text: "Hệ thống đã sẵn sàng cho câu hỏi mới."});
+            }
+        });
+    </script>
+</body>
+</html>

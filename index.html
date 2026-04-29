@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .chat-container { height: calc(100vh - 180px); }
+        .chat-container { height: calc(100vh - 190px); }
         .message-appear { animation: fadeIn 0.3s ease-out forwards; }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
@@ -15,7 +15,7 @@
         }
         .dot-flashing {
             position: relative; width: 10px; height: 10px; border-radius: 5px;
-            background-color: #3b82f6; color: #3b82f6;
+            background-color: #ef4444; color: #ef4444;
             animation: dotFlashing 1s infinite linear alternate; animation-delay: .5s;
         }
         .dot-flashing::before, .dot-flashing::after {
@@ -23,13 +23,13 @@
         }
         .dot-flashing::before {
             left: -15px; width: 10px; height: 10px; border-radius: 5px;
-            background-color: #3b82f6; animation: dotFlashing 1s infinite alternate; animation-delay: 0s;
+            background-color: #ef4444; animation: dotFlashing 1s infinite alternate; animation-delay: 0s;
         }
         .dot-flashing::after {
             left: 15px; width: 10px; height: 10px; border-radius: 5px;
-            background-color: #3b82f6; animation: dotFlashing 1s infinite alternate; animation-delay: 1s;
+            background-color: #ef4444; animation: dotFlashing 1s infinite alternate; animation-delay: 1s;
         }
-        @keyframes dotFlashing { 0% { background-color: #3b82f6; } 50%, 100% { background-color: #ebe6ff; } }
+        @keyframes dotFlashing { 0% { background-color: #ef4444; } 50%, 100% { background-color: #fca5a5; } }
         
         .source-link {
             display: inline-flex;
@@ -53,12 +53,15 @@
     <header class="bg-red-700 text-white p-4 shadow-lg sticky top-0 z-10">
         <div class="max-w-4xl mx-auto flex items-center justify-between">
             <div class="flex items-center space-x-3">
-                <div class="bg-white p-1 rounded-full w-10 h-10 flex items-center justify-center">
+                <div class="bg-white p-1 rounded-full w-10 h-10 flex items-center justify-center shrink-0">
                     <img src="https://dhcsnd.edu.vn/upload/hinhanh/lo-go-dhcs6666_26x32.png" alt="Logo PPU" class="w-8">
                 </div>
                 <div>
                     <h1 class="font-bold text-lg leading-tight">Đại học Cảnh sát nhân dân</h1>
-                    <p class="text-xs opacity-80 italic">Thông tin chính xác - Khách quan - Cập nhật</p>
+                    <div class="flex items-center space-x-2 text-[10px] opacity-90">
+                        <span id="pulseStatus" class="bg-green-500 w-2 h-2 rounded-full animate-pulse"></span>
+                        <span id="visitorCount">Đang khởi tạo...</span>
+                    </div>
                 </div>
             </div>
             <button id="clearChat" class="hover:bg-red-800 p-2 rounded-full transition w-10 h-10" title="Xóa hội thoại">
@@ -70,7 +73,7 @@
     <main class="max-w-4xl mx-auto p-4 chat-container overflow-y-auto" id="chatArea">
         <div class="flex mb-4 message-appear">
             <div class="bg-white border border-red-100 p-4 rounded-2xl rounded-tl-none shadow-sm max-w-[85%]">
-                <p class="text-sm">Hệ thống trợ lý AI đã sẵn sàng. Hãy đặt câu hỏi về các văn bản, quy định hoặc thông tin tuyển sinh của <b>Đại học Cảnh sát nhân dân</b>.</p>
+                <p class="text-sm">Hệ thống trợ lý AI đã sẵn sàng. Dữ liệu được cập nhật từ các văn bản số hóa của nhà trường và tìm kiếm Google thời gian thực.</p>
             </div>
         </div>
     </main>
@@ -84,44 +87,108 @@
     <footer class="fixed bottom-0 left-0 right-0 bg-white border-t p-4 pb-6 md:pb-4">
         <div class="max-w-4xl mx-auto">
             <form id="chatForm" class="flex items-center space-x-2">
-                <input type="text" id="userInput" placeholder="Hỏi về quy chế, thông báo, nhân sự..." 
+                <input type="text" id="userInput" placeholder="Hỏi về quy chế, điểm chuẩn, nhân sự..." 
                     class="flex-1 border border-slate-300 rounded-full px-5 py-3 focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent transition text-sm">
                 <button type="submit" class="bg-red-700 text-white w-12 h-12 rounded-full flex items-center justify-center hover:bg-red-800 transition shadow-md active:scale-95">
                     <i class="fas fa-paper-plane"></i>
                 </button>
             </form>
-            <p class="text-[10px] text-center text-slate-400 mt-2">Dữ liệu được đối soát từ văn bản nội bộ và Google Search.</p>
+            <p class="text-[10px] text-center text-slate-400 mt-2">Dữ liệu đối soát từ văn bản nội bộ và Google Search.</p>
         </div>
     </footer>
 
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot, increment, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 1. Khởi tạo cấu hình Firebase
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'ppu-chatbot-ai';
+
+        const visitorCountEl = document.getElementById('visitorCount');
+
+        // 2. Hàm đếm số người dùng (Chỉ thực hiện khi user đã login)
+        async function runVisitorCounter(user) {
+            if (!user) return;
+            
+            // Theo Rule 1: Đường dẫn collection phải tuân thủ nghiêm ngặt
+            const counterDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'stats', 'visitors');
+            
+            try {
+                const hasVisited = localStorage.getItem('ppu_ai_visited_v1');
+                
+                if (!hasVisited) {
+                    const snap = await getDoc(counterDocRef);
+                    if (!snap.exists()) {
+                        // Khởi tạo nếu chưa có
+                        await setDoc(counterDocRef, { count: 1 });
+                    } else {
+                        // Tăng bộ đếm
+                        await updateDoc(counterDocRef, { count: increment(1) });
+                    }
+                    localStorage.setItem('ppu_ai_visited_v1', 'true');
+                }
+
+                // Lắng nghe thay đổi thực tế
+                onSnapshot(counterDocRef, (doc) => {
+                    if (doc.exists()) {
+                        visitorCountEl.innerText = `${doc.data().count.toLocaleString()} người đã sử dụng AI`;
+                    }
+                }, (error) => {
+                    console.error("Lỗi Firestore:", error);
+                    visitorCountEl.innerText = "Hệ thống AI trực tuyến";
+                });
+            } catch (err) {
+                console.warn("Permission Error (đang xử lý):", err.message);
+                visitorCountEl.innerText = "Hệ thống AI trực tuyến";
+            }
+        }
+
+        // 3. Xử lý Đăng nhập (Rule 3: Auth trước Query)
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Auth failed:", error);
+            }
+        };
+
+        initAuth();
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                runVisitorCounter(user);
+            }
+        });
+    </script>
+
     <script>
+        // --- LOGIC CHATBOT AI ---
         const chatArea = document.getElementById('chatArea');
         const chatForm = document.getElementById('chatForm');
         const userInput = document.getElementById('userInput');
         const typingIndicator = document.getElementById('typingIndicator');
         const apiKey = ""; 
 
-        const ADMIN_DIGITIZED_DATA = `
-            [Dữ liệu nội bộ từ văn bản trường nạp tại đây]
-        `;
+        const ADMIN_DIGITIZED_DATA = `[Dữ liệu nội bộ nạp tại đây]`;
 
         const systemPrompt = `
-            Bạn là trợ lý AI chuyên cung cấp thông tin thực tế về Trường Đại học Cảnh sát nhân dân (PPU).
-
-            PHONG CÁCH TRẢ LỜI QUAN TRỌNG:
-            1. TRỰC DIỆN & KHÁCH QUAN: Chỉ cung cấp thông tin thực tế, số liệu, tên gọi và chức năng nhiệm vụ.
-            2. KHÔNG CẢM TÍNH: Tuyệt đối không sử dụng các từ ngữ mang tính ca ngợi, nhận xét chủ quan (Ví dụ: KHÔNG nói "người chỉ huy trách nhiệm", "xây dựng hình ảnh đẹp", "đồng hành cùng phong trào"). 
-            3. TRUNG LẬP: Nếu trả lời về một cá nhân, chỉ nêu chức vụ, cấp bậc và nhiệm vụ chuyên môn theo văn bản.
-            4. THỜI GIAN THỰC: Sử dụng Google Search để lấy thông tin mới nhất.
-
-            NHIỆM VỤ:
-            - Ưu tiên thông tin từ dhcsnd.edu.vn và các văn bản quy định.
-            - Trình bày dạng danh sách hoặc đoạn văn ngắn gọn, súc tích.
+            Bạn là trợ lý AI chuyên nghiệp của Trường Đại học Cảnh sát nhân dân (PPU).
+            PHONG CÁCH: TRỰC DIỆN, KHÁCH QUAN, KHÔNG SỬ DỤNG TỪ NGỮ CẢM TÍNH HOẶC CA NGỢI.
+            NHIỆM VỤ: Sử dụng Google Search để lấy tin mới nhất.
         `;
 
         async function callGemini(message) {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-            
             const payload = {
                 contents: [{ parts: [{ text: message }] }],
                 systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -138,18 +205,16 @@
                     });
                     const data = await response.json();
                     const candidate = data.candidates?.[0];
-                    const text = candidate?.content?.parts?.[0]?.text || "Không tìm thấy dữ liệu.";
-                    const sources = candidate?.groundingMetadata?.groundingAttributions?.map(a => ({
-                        uri: a.web?.uri,
-                        title: a.web?.title
-                    })) || [];
-                    return { text, sources };
+                    return { 
+                        text: candidate?.content?.parts?.[0]?.text || "Không tìm thấy dữ liệu.",
+                        sources: candidate?.groundingMetadata?.groundingAttributions?.map(a => ({ uri: a.web?.uri, title: a.web?.title })) || []
+                    };
                 } catch (e) {
                     retries++;
                     await new Promise(r => setTimeout(r, Math.pow(2, retries) * 1000));
                 }
             }
-            return { text: "Lỗi kết nối.", sources: [] };
+            return { text: "Lỗi kết nối đến máy chủ AI.", sources: [] };
         }
 
         function appendMessage(contentObj, isUser = false) {
@@ -163,23 +228,18 @@
             const messageText = isUser ? contentObj : contentObj.text;
             container.innerHTML = `<div>${messageText.replace(/\n/g, '<br>')}</div>`;
 
-            if (!isUser && contentObj.sources && contentObj.sources.length > 0) {
+            if (!isUser && contentObj.sources?.length > 0) {
                 const sourceContainer = document.createElement('div');
                 sourceContainer.className = 'mt-3 pt-2 border-t border-slate-100';
-                sourceContainer.innerHTML = '<p class="text-[10px] font-bold text-slate-500 mb-1">NGUỒN TRÍCH DẪN:</p>';
-                const uniqueSources = Array.from(new Set(contentObj.sources.map(s => s.uri)))
-                    .map(uri => contentObj.sources.find(s => s.uri === uri));
-                uniqueSources.forEach(source => {
+                sourceContainer.innerHTML = '<p class="text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Nguồn dữ liệu:</p>';
+                contentObj.sources.forEach(source => {
                     const link = document.createElement('a');
-                    link.href = source.uri;
-                    link.target = '_blank';
-                    link.className = 'source-link';
-                    link.innerHTML = `<i class="fas fa-link mr-1"></i> ${source.title || 'Liên kết'}`;
+                    link.href = source.uri; link.target = '_blank'; link.className = 'source-link';
+                    link.innerHTML = `<i class="fas fa-link mr-1"></i> ${source.title || 'Link gốc'}`;
                     sourceContainer.appendChild(link);
                 });
                 container.appendChild(sourceContainer);
             }
-            
             wrapper.appendChild(container);
             chatArea.appendChild(wrapper);
             chatArea.scrollTop = chatArea.scrollHeight;
@@ -199,9 +259,9 @@
         });
 
         document.getElementById('clearChat').addEventListener('click', () => {
-            if(confirm('Xóa hội thoại?')) {
+            if(confirm('Bạn có muốn xóa hội thoại hiện tại?')) {
                 chatArea.innerHTML = '';
-                appendMessage({text: "Hệ thống đã sẵn sàng cho câu hỏi mới."});
+                appendMessage({text: "Xin chào! Tôi có thể giúp gì cho bạn hôm nay?"});
             }
         });
     </script>
